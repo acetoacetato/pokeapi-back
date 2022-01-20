@@ -3,8 +3,10 @@ const { response } = require('express');
 
 
 // Returns a object made by the heigth, weight, name and abilities of the pokemon
+//  if detailed is true, it returns the description and the evolutions of the pokemon
 const formatPokemon = (pokemon, detailed) => {
 
+    // Initial response with basic stats
     resp = {
         name: pokemon.name,
         id: pokemon.id,
@@ -22,6 +24,7 @@ const formatPokemon = (pokemon, detailed) => {
     if (!detailed)
         return resp;
 
+    // If detailed is true, it will return the description and the evolution chain of the pokemon
     return detailedData(pokemon.species.url).then(details => {
         resp.evolutions = details.evolutions;
         resp.description = details.description;
@@ -31,6 +34,7 @@ const formatPokemon = (pokemon, detailed) => {
 
 }
 
+// Returns a object with the name and the url of the pokemon species given a pokemon
 const pokeList = (pokeData) => {
     id = pokeData.url.split('/')[6];
     return axios.get(pokeData.url)
@@ -43,18 +47,17 @@ const pokeList = (pokeData) => {
 
 }
 
-const detail = (obj) => ({
-    name: obj.species.name,
-    url: obj.species.url,
-});
 
-
+// Returns an array with the evolution names of the pokemon
 const evolutionChain = (object, array = []) => {
+    // Adds the name of the pokemon to the array
     array.push(object.species.name);
 
+    // Base case of the recursion
     if (object.evolves_to.length === 0) {
         return array;
     } else {
+        // For each evolution, it calls the recursion to get the next evolution to each option
         object.evolves_to.forEach(evolution => {
             evolutionChain(evolution, array);
         });
@@ -63,10 +66,12 @@ const evolutionChain = (object, array = []) => {
 }
 
 
-// Get evolution chain from pokeapi and returns the evolutions of the pokemon
+// Get evolution chain and description of the pokemon given the species url
 const detailedData = (url) => {
     return axios.get(url)
         .then(response => {
+
+            // Gets the description of the pokemon in spanish
             description = response.data.flavor_text_entries.find(entry => entry.language.name === 'es');
             const chain_url = response.data.evolution_chain.url;
             return axios.get(chain_url)
@@ -81,6 +86,7 @@ const detailedData = (url) => {
         });
 }
 
+// Gets a pokemon detailed data given the pokemon name or id
 const getPokemon = (req, res) => {
     const { search } = req.params;
     const url = `https://pokeapi.co/api/v2/pokemon/${search}`;
@@ -92,6 +98,7 @@ const getPokemon = (req, res) => {
             });
         })
         .catch(err => {
+            console.error(err);
             return res.status(404).send({
                 error: "Pokemon not found"
             });
@@ -100,16 +107,10 @@ const getPokemon = (req, res) => {
 
 }
 
-const listAllPokemon = async (req, res) => {
-    const { page } = req.params;
-    const url = `https://pokeapi.co/api/v2/pokemon?offset=${page}&limit=20`;
-    axios.get(url)
-        .then(response => {
-            return res.status(200).send(response.data)
-        });
-};
 
 
+// Gets a list of all the pokemon. It returns a url for the next pokemon available
+// and the pokemon list with basic data.
 const listPagePokemon = (req, res) => {
     const page = req.query.page || 0;
     const url = `https://pokeapi.co/api/v2/pokemon`;
@@ -138,6 +139,5 @@ const listPagePokemon = (req, res) => {
 
 module.exports = {
     getPokemon,
-    listAllPokemon,
     listPagePokemon,
 };
